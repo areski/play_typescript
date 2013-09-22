@@ -1,0 +1,176 @@
+
+interface IPoint {
+    x: number;
+    y: number;
+}
+
+interface ISize {
+    width: number;
+    height: number;
+}
+
+interface IThing {
+    id: string;
+    position: IPoint;
+    size: ISize;
+
+    draw(graphics: any): void;
+}
+
+interface ISolidThing extends IThing {
+    collision(obj: IThing): bool;
+}
+
+interface IAnimatedThing extends IThing {
+    speed: number;
+    move(position: IPoint): void;
+    scale(size: ISize): void;
+}
+
+interface ISolidAnimatedThing extends IAnimatedThing, ISolidThing {
+}
+
+interface IScenario {
+    things: IThing[];
+
+    start(framesPerSecond: number): void;
+    stop(): void;
+}
+
+class Utilities {
+    static collisionDetection(a: IThing, b: IThing): bool{
+        return a.position.x <= (b.position.x + b.position.width)
+        //    && .position.x
+    }
+
+}
+
+class Point implements IPoint {
+    public x: number;
+    public y: number;
+    constructor();
+    constructor(x: number, y: number);
+    constructor(x?: any, y?: any) {
+        this.x = x || 0;
+        this.y = y || 0;
+    }
+}
+
+
+class Size implements ISize {
+    constructor(public width: number, public height: number){
+    }
+}
+
+class Thing implements IThing {
+    id: string;
+    position: IPoint;
+    size: ISize;
+
+    constructor(id: string, position: IPoint, size: ISize);
+    constructor(id: string, );
+    constructor(id: string, position?: any, size?: any){
+        this.position = position || new Point(0,0);
+        this.size = size || new Size(0,0);
+    }
+
+    draw(graphics: any): void {
+
+    }
+}
+
+class SolidThing implements ISolidThing {
+    collision(obj: IThing): bool {
+        return Utilities.collisionDetection(this, obj);
+    }
+}
+
+class AnimatedThing extends Thing implements IAnimatedThing {
+    public speed: number;
+    private targetPosition: IPoint;
+    private targetSize: ISize;
+
+    move(position: IPoint): void {
+        this.targetPosition = position;
+    }
+
+    scale(size: ISize): void {
+        this.targetSize = size;
+    }
+
+    update(ticks: number) {
+        var delta = this.speed / ticks;
+        if (this.targetPosition) {
+            this.position.x = this.calculateStep(this.position.x, this.targetPosition.x, delta);
+            this.position.y = this.calculateStep(this.position.y, this.targetPosition.y, delta);
+        }
+        if (this.targetSize) {
+            this.size.width = this.calculateStep(this.size.width, this.targetSize.width, delta);
+            this.size.height = this.calculateStep(this.size.height, this.targetSize.height, delta);
+        }
+    }
+    calculateStep(from: number, to: number, delta: number) {
+        if (from == to)
+            return from;
+        else if (from < to)
+            return Math.min(from + delta, to);
+        else
+            return Math.max(from - delta, to);
+    }
+}
+
+
+class SolidAnumatedThing implements AnimatedThing implements ISolidAnimatedThing {
+    collision(obj: IThing): bool {
+        return Utilities.collisionDetection(this, obj);
+    }
+}
+
+
+class Scenario implements IScenario {
+    public things: IThing[];
+    private graphics: CanvasRenderingContext2D;
+    private lastTime: number;
+    private interval: number;
+
+    constructor(canvas: HTMLCanvasElement) {
+        this.graphics = canvas.getContext('2d');
+        this.things = new IThing[];
+    }
+
+    start(framesPerSecond : number): void {
+        if(this.interval)
+            this.stop();
+
+        this.lastTime = Date.now();
+        this.interval = setInterval(() => this.update(), 1000 / framesPerSecond);
+    }
+
+    stop(): void{
+        if (this.interval){
+            clearInterval(this.interval);
+            this.interval = null;
+        }
+    }
+
+    update(): void;
+    update(ticks: number): void;
+    update(ticks?: any): void {
+        if (!ticks) {
+            var now = Date.now();
+            var m = now - this.lastTime;
+            m = m <= 0 ? 1 : m;
+            this.lastTime = now;
+
+            this.update(m);
+        }
+        else{
+            this.things.forEach(thing => {
+                thing.update(ticks);
+                thing.draw(this.graphics);
+            });
+        }
+    }
+
+}
+
